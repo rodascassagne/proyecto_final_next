@@ -125,99 +125,146 @@ interface CloudinaryResponse {
   secure_url: string;
 }
 
+
+
 export async function signUp(prevState: SignUpState | undefined, formData: FormData) {
-
-  //---------------------------------- thumbnail------------------------------------------
-  // const file_nail = formData.get("thumbnail") as File;
-  // const buffer1 = Buffer.from(await file_nail.arrayBuffer());
-  // const filename_thumbnail = file_nail.name.replaceAll(" ", "_");
- 
-
-  const file_nail = formData.get("thumbnail") as File;
-  const bytes1 = await file_nail.arrayBuffer();
-  const buffer1 = Buffer.from(bytes1);
-
-  const response1 = await new Promise<CloudinaryResponse>((resolve, reject) => {
-    cloudinary.uploader
-    .upload_stream({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result as CloudinaryResponse);
-      }
-    }).end(buffer1);
-  });
-
-  //console.log(response.secure_url);
-  const y= response1.secure_url;
-
-
-
-//---------------------------------- image------------------------------------------
-  // const file_image = formData.get("image") as File;
-  // const buffer2 = Buffer.from(await file_image.arrayBuffer());
-  // const filename_image = file_image.name.replaceAll(" ", "_");
-
-  const file_image = formData.get("image") as File;
-  const bytes2 = await file_image.arrayBuffer();
-  const buffer2 = Buffer.from(bytes2);
-
-  const response2 = await new Promise<CloudinaryResponse>((resolve, reject) => {
-    cloudinary.uploader
-    .upload_stream({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result as CloudinaryResponse);
-      }
-    }).end(buffer2);
-  });
-
-  //console.log(response.secure_url);
-  const z= response2.secure_url;
-
-
-
-
-
-
-  
-
-  const validatedFields = SignUpSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    thumbnail: file_nail.name !== 'undefined' ? response1.secure_url : '/products/noimage.png',
-    image: file_image.name !== 'undefined' ? response2.secure_url : '/products/noimage.png',
-    bio: formData.get("bio"),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Validation failed. Please check your input.",
-    };
-  }
-
-  const { name, email, password, thumbnail, image, bio } = validatedFields.data;
-
   try {
-    const userExists = await sql`SELECT email FROM sellers WHERE sellers.email = ${email.trim()}`;
-    if (userExists.rowCount) return { message: "An account exists for this user." };
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await sql`
+
+    //---------------------------------- thumbnail------------------------------------------
+
+
+
+    const file_nail = formData.get("thumbnail") as File;
+    const bytes1 = await file_nail.arrayBuffer();
+    const buffer1 = Buffer.from(bytes1);
+
+    const response1 = await new Promise<CloudinaryResponse>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream({}, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result as CloudinaryResponse);
+          }
+        }).end(buffer1);
+    });
+
+    //console.log(response.secure_url);
+    const y = response1.secure_url;
+
+
+
+    //---------------------------------- image------------------------------------------
+
+
+    const file_image = formData.get("image") as File;
+    const bytes2 = await file_image.arrayBuffer();
+    const buffer2 = Buffer.from(bytes2);
+
+    const response2 = await new Promise<CloudinaryResponse>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream({}, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result as CloudinaryResponse);
+          }
+        }).end(buffer2);
+    });
+
+    //console.log(response.secure_url);
+    const z = response2.secure_url;
+
+
+    const validatedFields = SignUpSchema.safeParse({
+      name: formData.get("name"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+      thumbnail: file_nail.name !== 'undefined' ? response1.secure_url : '/products/noimage.png',
+      image: file_image.name !== 'undefined' ? response2.secure_url : '/products/noimage.png',
+      bio: formData.get("bio"),
+    });
+
+    if (!validatedFields.success) {
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: "Validation failed. Please check your input.",
+      };
+    }
+
+    const { name, email, password, thumbnail, image, bio } = validatedFields.data;
+
+    try {
+      const userExists = await sql`SELECT email FROM sellers WHERE sellers.email = ${email.trim()}`;
+      if (userExists.rowCount) return { message: "An account exists for this user." };
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await sql`
         INSERT INTO sellers (name, seller_thumbnail, seller_image, seller_bio, email, password)
         VALUES (${name}, ${thumbnail}, ${image}, ${bio}, ${email}, ${hashedPassword})
         RETURNING id;`;
 
-    await signIn('credentials', { email: email, password: password, redirect: true, redirectTo: "/" });
-    redirect("/");
+      await signIn('credentials', { email: email, password: password, redirect: true, redirectTo: "/" });
+      redirect("/");
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+
   } catch (error) {
-    console.error(error);
-    throw error;
+    console.log(error);
   }
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export async function deleteProduct(id: string) {
   try {
@@ -265,17 +312,17 @@ export async function addProduct(prevState: ProductState | undefined, formData: 
 
   const response = await new Promise<CloudinaryResponse>((resolve, reject) => {
     cloudinary.uploader
-    .upload_stream({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result as CloudinaryResponse);
-      }
-    }).end(buffer);
+      .upload_stream({}, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result as CloudinaryResponse);
+        }
+      }).end(buffer);
   });
 
   //console.log(response.secure_url);
-  const x= response.secure_url;
+  const x = response.secure_url;
 
   const validatedFields = AddProductSchema.safeParse({
     description: formData.get("description"),
