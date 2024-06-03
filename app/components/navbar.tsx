@@ -76,7 +76,8 @@ export default function Navbar({ loggedInUser }: { loggedInUser: {} | null }) {
             <LogoutButton />
           ) : (
             <>
-              <LoginButton /> <>hola</> <SignupButton />
+              <LoginButton />
+              <SignupButton />
             </>
           )}
         </div>

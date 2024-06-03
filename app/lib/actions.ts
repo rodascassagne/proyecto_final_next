@@ -4,11 +4,18 @@ import { sql } from "@vercel/postgres";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcrypt';
 import { writeFile } from "fs/promises";
 import path from "path";
+import { NextResponse } from 'next/server';
+import { v2 as cloudinary } from 'cloudinary';
 
-
+// Configuration using environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 export type State = {
   errors?: {
@@ -31,25 +38,23 @@ const ReviewFormSchema = z.object({
 
 const ReviewProduct = ReviewFormSchema.omit({ productId: true });
 export async function reviewProduct(productId: string, prevState: State, formData: FormData) {
-
   // validate fields
   const validatedFields = ReviewProduct.safeParse({
     comment: formData.get("comment"),
     rating: formData.get("rating"),
     name: formData.get("name")
-  })
+  });
 
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors)
+    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing fields. Faild to add review"
-    }
+      message: "Missing fields. Failed to add review"
+    };
   }
 
   const { name, rating, comment } = validatedFields.data;
   const session = await auth();
-  let sqlQuery;
   if (session) {
     try {
       await sql`INSERT INTO reviews (product_id, user_id, username, rating, comment)
@@ -68,7 +73,6 @@ export async function reviewProduct(productId: string, prevState: State, formDat
         message: 'Database Error: Failed to add review.',
       };
     }
-
   }
   revalidatePath(`/products/${productId}`);
   redirect(`/products/${productId}`);
@@ -90,13 +94,11 @@ export async function authenticate(
 
 export async function logOut() {
   try {
-    await signOut()
+    await signOut();
   } catch (error) {
-    // console.log(error)
-    throw error
+    throw error;
   }
 }
-
 
 export type SignUpState = {
   errors?: {
@@ -119,65 +121,74 @@ const SignUpSchema = z.object({
   bio: z.string()
 });
 
+interface CloudinaryResponse {
+  secure_url: string;
+}
+
 export async function signUp(prevState: SignUpState | undefined, formData: FormData) {
 
-//---------------------------------- thumbnail------------------------------------------
-const file_nail = formData.get("thumbnail") as File;
+  //---------------------------------- thumbnail------------------------------------------
+  // const file_nail = formData.get("thumbnail") as File;
+  // const buffer1 = Buffer.from(await file_nail.arrayBuffer());
+  // const filename_thumbnail = file_nail.name.replaceAll(" ", "_");
+ 
 
-const buffer1 = Buffer.from(await file_nail.arrayBuffer());
-const filename_thumbnail =  file_nail.name.replaceAll(" ", "_");
-//console.log(filename);
-try {
-  await writeFile(
-    path.join(process.cwd(), "public/profile_thumbnail/" + filename_thumbnail),
-    buffer1
-  );
-} catch (error) {
-  console.log("Error occured ", error);
-  return {
-    message: 'Server Error: Failed to Upload File.',
-  };
-}
+  const file_nail = formData.get("thumbnail") as File;
+  const bytes1 = await file_nail.arrayBuffer();
+  const buffer1 = Buffer.from(bytes1);
+
+  const response1 = await new Promise<CloudinaryResponse>((resolve, reject) => {
+    cloudinary.uploader
+    .upload_stream({}, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result as CloudinaryResponse);
+      }
+    }).end(buffer1);
+  });
+
+  //console.log(response.secure_url);
+  const y= response1.secure_url;
+
+
 
 //---------------------------------- image------------------------------------------
-const file_image = formData.get("image") as File;
+  // const file_image = formData.get("image") as File;
+  // const buffer2 = Buffer.from(await file_image.arrayBuffer());
+  // const filename_image = file_image.name.replaceAll(" ", "_");
 
-const buffer2 = Buffer.from(await file_image.arrayBuffer());
-const filename_image =  file_image.name.replaceAll(" ", "_");
-//console.log(filename);
-try {
-  await writeFile(
-    path.join(process.cwd(), "public/profile_image/" + filename_image),
-    buffer2
-  );
-} catch (error) {
-  console.log("Error occured ", error);
-  return {
-    message: 'Server Error: Failed to Upload File.',
-  };
-}
+  const file_image = formData.get("image") as File;
+  const bytes2 = await file_image.arrayBuffer();
+  const buffer2 = Buffer.from(bytes2);
 
+  const response2 = await new Promise<CloudinaryResponse>((resolve, reject) => {
+    cloudinary.uploader
+    .upload_stream({}, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result as CloudinaryResponse);
+      }
+    }).end(buffer2);
+  });
 
-
-
-
-
-
+  //console.log(response.secure_url);
+  const z= response2.secure_url;
 
 
 
 
 
-  //antes de subir a base de datos 
-  // Validate fields
+
+  
+
   const validatedFields = SignUpSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
-
-    thumbnail: file_nail.name!='undefined'?'/profile_thumbnail/'+filename_thumbnail:'/profile_thumbnail/noimage.png',
-    
-    image: file_image.name!='undefined'?'/profile_image/'+filename_image:'/profile_image/noimage.png',
+    thumbnail: file_nail.name !== 'undefined' ? response1.secure_url : '/products/noimage.png',
+    image: file_image.name !== 'undefined' ? response2.secure_url : '/products/noimage.png',
     bio: formData.get("bio"),
   });
 
@@ -187,50 +198,26 @@ try {
       message: "Validation failed. Please check your input.",
     };
   }
+
   const { name, email, password, thumbnail, image, bio } = validatedFields.data;
 
   try {
-    // check for existing user
+    const userExists = await sql`SELECT email FROM sellers WHERE sellers.email = ${email.trim()}`;
+    if (userExists.rowCount) return { message: "An account exists for this user." };
 
-    try {
-      const userExists = await sql`SELECT email FROM sellers WHERE sellers.email = ${email.trim()}`
-      if (userExists.rowCount) return { message: "An account exists for this user." };
-    } catch (error) {
-      console.error(error)
-      throw error;
-    }
-
-    // Insert user into the database
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10);
     await sql`
         INSERT INTO sellers (name, seller_thumbnail, seller_image, seller_bio, email, password)
-        VALUES (${name}, ${thumbnail}, ${image},${bio}, ${email}, ${hashedPassword})
+        VALUES (${name}, ${thumbnail}, ${image}, ${bio}, ${email}, ${hashedPassword})
         RETURNING id;`;
 
-      await signIn('credentials', { email: email, password: password, redirect: true, redirectTo: "/" }) 
-
-      redirect("/");
+    await signIn('credentials', { email: email, password: password, redirect: true, redirectTo: "/" });
+    redirect("/");
   } catch (error) {
     console.error(error);
     throw error;
   }
-
 }
-
-
-
-
-
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-
 
 export async function deleteProduct(id: string) {
   try {
@@ -243,36 +230,6 @@ export async function deleteProduct(id: string) {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Add product
 export type ProductState = {
   errors?: {
     name?: string[];
@@ -286,56 +243,53 @@ export type ProductState = {
 const AddProductSchema = z.object({
   name: z.string().trim().min(1, { message: "Product Name is required" }),
   description: z.string().trim().min(1, { message: "Product Description is required" }),
-  imageUrl:z.string(),
+  imageUrl: z.string(),
   price: z.coerce
     .number()
     .gte(1, { message: "Please enter valid price" })
 });
 
+interface CloudinaryResponse {
+  secure_url: string;
+}
+
 export async function addProduct(prevState: ProductState | undefined, formData: FormData) {
   const session = await auth();
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
-
 
   const file = formData.get("imageUrl") as File;
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
 
+  const response = await new Promise<CloudinaryResponse>((resolve, reject) => {
+    cloudinary.uploader
+    .upload_stream({}, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result as CloudinaryResponse);
+      }
+    }).end(buffer);
+  });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const filename =  file.name.replaceAll(" ", "_");
-  //console.log(filename);
-  try {
-    await writeFile(
-      path.join(process.cwd(), "public/products/" + filename),
-      buffer
-    );
-  } catch (error) {
-    console.log("Error occured ", error);
-    return {
-      message: 'Server Error: Failed to Upload File.',
-    };
-  }
+  //console.log(response.secure_url);
+  const x= response.secure_url;
 
-
- 
-  // validate fields 
-  //antes de subir base de datos
   const validatedFields = AddProductSchema.safeParse({
     description: formData.get("description"),
-
-    imageUrl: file.name!='undefined'?'/products/'+filename:'/products/noimage.png',
-
+    imageUrl: file.name !== 'undefined' ? response.secure_url : '/products/noimage.png',
     price: formData.get("price"),
     name: formData.get("name")
-  })
+  });
 
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors)
+    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing fields. Faild to add review"
-    }
+      message: "Missing fields. Failed to add review"
+    };
   }
 
   const { name, description, imageUrl, price } = validatedFields.data;
@@ -350,4 +304,3 @@ export async function addProduct(prevState: ProductState | undefined, formData: 
   }
   revalidatePath('/profile');
 }
-
