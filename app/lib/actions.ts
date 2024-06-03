@@ -301,53 +301,58 @@ interface CloudinaryResponse {
 }
 
 export async function addProduct(prevState: ProductState | undefined, formData: FormData) {
-  const session = await auth();
-  if (!session) {
-    redirect("/login");
-  }
-
-  const file = formData.get("imageUrl") as File;
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const response = await new Promise<CloudinaryResponse>((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream({}, (err, result) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result as CloudinaryResponse);
-        }
-      }).end(buffer);
-  });
-
-  //console.log(response.secure_url);
-  const x = response.secure_url;
-
-  const validatedFields = AddProductSchema.safeParse({
-    description: formData.get("description"),
-    imageUrl: file.name !== 'undefined' ? response.secure_url : '/products/noimage.png',
-    price: formData.get("price"),
-    name: formData.get("name")
-  });
-
-  if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors);
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing fields. Failed to add review"
-    };
-  }
-
-  const { name, description, imageUrl, price } = validatedFields.data;
-
   try {
-    await sql`INSERT INTO products (seller_id, name, description, price, image_url)
+
+    const session = await auth();
+    if (!session) {
+      redirect("/login");
+    }
+
+    const file = formData.get("imageUrl") as File;
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const response = await new Promise<CloudinaryResponse>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream({}, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result as CloudinaryResponse);
+          }
+        }).end(buffer);
+    });
+
+    //console.log(response.secure_url);
+    const x = response.secure_url;
+
+    const validatedFields = AddProductSchema.safeParse({
+      description: formData.get("description"),
+      imageUrl: file.name !== 'undefined' ? response.secure_url : '/products/noimage.png',
+      price: formData.get("price"),
+      name: formData.get("name")
+    });
+
+    if (!validatedFields.success) {
+      console.log(validatedFields.error.flatten().fieldErrors);
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: "Missing fields. Failed to add review"
+      };
+    }
+
+    const { name, description, imageUrl, price } = validatedFields.data;
+
+    try {
+      await sql`INSERT INTO products (seller_id, name, description, price, image_url)
         VALUES (${session.user?.id}, ${name}, ${description}, ${price}, ${imageUrl})`;
+    } catch (error) {
+      return {
+        message: 'Database Error: Failed to add product.',
+      };
+    }
+    revalidatePath('/profile');
   } catch (error) {
-    return {
-      message: 'Database Error: Failed to add product.',
-    };
+    console.log(error);
   }
-  revalidatePath('/profile');
 }
