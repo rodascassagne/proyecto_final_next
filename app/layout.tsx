@@ -1,5 +1,4 @@
 import '@/app/styles/global.css';
-import { inter } from '@/app/styles/fonts';
 import NavBarWrapper from './components/nav-wrapper';
 
 export default function RootLayout({
@@ -9,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body >
         <NavBarWrapper />
         <main >{children}</main>
       </body>

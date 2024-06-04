@@ -7,7 +7,8 @@ export default async function ProductReviews({ id }: { id: string }) {
 
   return (
     <div className="mx-3 mt-[3rem]">
-      <h2 className="mb-4 text-2xl font-semibold underline">Reviews</h2>
+      <ProductReviewForm productId={id} />
+      <h2 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Reviews</h2>
       {reviews.length < 1 ? (
         <p className="mb-8 text-light">
           No reviews yet. Be the first to review this product
@@ -18,25 +19,25 @@ export default async function ProductReviews({ id }: { id: string }) {
             const ratingStars = [];
             for (let i = 0; i < review.rating; i++) ratingStars.push('★');
             return (
-              <li key={review.id} className="bg-light p-4">
+              <li key={review.id} className="bg-white p-4">
                 <div className="flex gap-6">
                   <p>{review.username}</p>
                   <p>{new Date(review.created_at).toLocaleDateString()}</p>
                 </div>
                 <div>
                   {ratingStars.map((star: string, index: number) => (
-                    <span key={index} className={`text-2xl text-yellow-300`}>
+                    <span key={index} className={`text-2xl text-orange-300`}>
                       ★
                     </span>
                   ))}
                 </div>
-                <p className="text-lg text-green-600">{review.comment}</p>
+                <p className="text-lg text-black-600">{review.comment}</p>
               </li>
             );
           })}
         </ul>
       )}
-      <ProductReviewForm productId={id} />
+     
     </div>
   );
 }

@@ -15,28 +15,17 @@ export default async function SellerDetails() {
     <>
       {seller && (
         <>
-          <div className="container mx-auto bg-lightGreen p-4 md:mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 md:gap-x-8">
-              <div className="mb-6 max-w-full md:mb-0">
-                <Image
-                  src={seller.seller_image}
-                  alt={seller.name}
-                  width={500}
-                  height={500}
-                  className="rounded-md"
-                />
-              </div>
-              <div className="col-span-2 flex flex-col justify-center rounded-lg border border-gray-300 bg-amber-50 p-6 text-center shadow-lg">
-                <div>
-                  <h1 className="mb-2 text-2xl font-bold md:text-3xl">
-                    {seller.name}
-                  </h1>
-                  <p className="mb-4">{seller.seller_bio}</p>
-                </div>
-              </div>
-            </div>
+          <div className=" flex flex-col mx-auto  p-4 md:mt-6">
+            <Image
+              src={seller.seller_image}
+              alt={seller.name}
+              width={200}
+              height={200}
+            />
+            <h1 className="mb-2 text-2xl font-bold md:text-3xl">
+              {seller.name}
+            </h1>
           </div>
-
           <div>
             <AddProductForm />
           </div>
@@ -112,21 +101,12 @@ export default async function SellerDetails() {
                           </tr>
                         ))}
                       </tbody>
-
-
-
-
-
                     </table>
                   </div>
                 </div>
               </div>
             )}
           </div>
-
-
-
-
         </>
       )}
     </>

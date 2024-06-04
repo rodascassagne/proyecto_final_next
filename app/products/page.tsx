@@ -14,9 +14,11 @@ export const metadata: Metadata = {
 export default function Page() {
  
 
-  return( <>
-  <h1 className='text-3xl mb-5 text-center text-light underline'>Product Catalog</h1>
+  return( 
+  <>
   <ProductFilterButtons maxPrice={'5000'} />
-  <ProductList maxPrice={'5000'} />
-  </>);
+  <ProductList maxPrice={'500000'} />
+  </>
+  
+  );
 }
